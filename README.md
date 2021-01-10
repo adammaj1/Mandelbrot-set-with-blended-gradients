@@ -1,11 +1,27 @@
 [Blend modes](https://en.wikipedia.org/wiki/Blend_modes)
 
 # example
-First image   
+
+
+## Linear step plus slope
+
+Here exterior of the Mandelbrot set is:
+* described by potential
+* coloured with 1D gray gradients
+
+Interior is solid colour blue
+
+
+First image is slope ( normal map = [Lambert reflection (Illumination model or shader )](https://gitlab.com/adammajewski/mandelbrot_wiki_ACh#using-complex-potential-and-lambert-reflection-illumination-model-or-shader-)   
 ![](./images/normal.png)  
 
 
-Second image   
+Second image: 
+* level sets of potential
+* [linear step function](https://github.com/adammaj1/1D-RGB-color-gradient#gray-linear-colormap)
+
+![](./images/Linear_steps.png "Gray Linear gradient ( colormap)")  
+![](./images/Linear_steps_2D.png "RGB profiles of the GrayL colormap")    
 
 ![](./images/step_linear.png)  
 
@@ -16,7 +32,8 @@ Second image
 
 
 # see also
-* [KFMovieMaker](https://www.maths.town/after-effects-plugins/kfmoviemaker/kfmoviemaker-download-and-installation)
+* [KFMovieMaker](https://www.maths.town/after-effects-plugins/kfmoviemaker/kfmoviemaker-download-and-installation) by Adam Saka
+  * [github repo](https://github.com/adamsaka/KFMovieMaker)
   * [in wikibooks](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker)
 * [color-blend](https://github.com/loilo/color-blend) by Florian Reuschel
 
