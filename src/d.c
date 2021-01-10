@@ -84,11 +84,29 @@ sys	0m0,161s
 int NumberOfImages = 0;
 
 
+/*
+Representation Function
+ http://www.mrob.com/pub/muency/representationfunction.html
+*/
 
+
+// Representation function
 typedef enum  {
-	step_linear = 0,
-	angle_linear = 1,
-	normal = 2
+	Potential = 0,
+	Angle = 1,
+	Normal = 2
+	
+		
+		} RepresentationFunctionType; 
+
+
+
+
+// transfer function
+typedef enum  {
+	linear = 0,
+	step_linear = 1,
+	step_sqrt = 2
 		
 		} GradientType; 
 
@@ -109,7 +127,7 @@ static unsigned int iWidth;	// horizontal dimension of array
 static unsigned int iyMin = 0;	// Indexes of array starts from 0 not 1
 static unsigned int iyMax;	//
 
-static unsigned int iHeight = 5000;	//  
+static unsigned int iHeight = 10000;	//  
 
 
 
@@ -421,12 +439,27 @@ double ComputePotential(const complex double c){
 }
 
 
-unsigned char ComputePotentialColor(const double potential){
+unsigned char ComputePotentialColor(const double potential, const RepresentationFunctionType RepresentationFunction){
 
 	if ( potential >25.0 ){ return 0 ;}// boundary and exterior near boundary = black
      	if ( potential >10.0 ) {return 255;} // 10<potential<25; exterior noisy part 
      	// potential < 10 ; exterior not noisy
+     	
+     	
      	double p = frac(potential) ; // step function
+     	
+     	switch(RepresentationFunction){
+     	
+     		case linear: {p = potential; break;}
+     		
+     		case step_linear: {p = frac(potential); break;}
+     		
+     		case step_sqrt: { p = frac(potential); p = sqrt(p); p = 1.0 - p; break;}
+     		
+     		default: {}
+     	
+     	}
+     	
      	return 255*p; // linear scale  
      							
      							
@@ -673,22 +706,20 @@ unsigned char GiveNormalColor(const int i ) {
  
  
 // compute color ( shade) of gradient 
-unsigned char GiveNonBlendedColor( const int i, const double D[], const double potential, GradientType Gradient){
+unsigned char GiveNonBlendedColor( const int i, const double D[], const double potential, RepresentationFunctionType RepresentationFunction, GradientType Gradient){
 
 
 	unsigned char g;
 	 
 	
-	switch (Gradient){
+	switch (RepresentationFunction){
 	
-		case step_linear: { g = ComputePotentialColor(potential); break;}
+		case Potential: { g = ComputePotentialColor(potential, Gradient); break;}
      			
-     		case angle_linear: {g = GiveAngleT(i, D); break;}
+     		case Angle: {g = GiveAngleT(i, D); break;}
      		
-     		case normal: {g = GiveNormalColor(i); break;}
+     		case Normal: {g = GiveNormalColor(i); break;}
      		
-     		
-     			
      		default: {}
      		}
      	return g;
@@ -718,7 +749,7 @@ unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
 
 
  
-unsigned char GiveExteriorColor(const int i, const double D[], const double potential, GradientType Gradient, 				BlendType Blend){
+unsigned char GiveExteriorColor(const int i, const double D[], const double potential, RepresentationFunctionType RepresentationFunction, GradientType Gradient, BlendType Blend){
 
 
 	unsigned char t;
@@ -727,12 +758,12 @@ unsigned char GiveExteriorColor(const int i, const double D[], const double pote
 	
 	
 	if (!Blend )
-		{t = GiveNonBlendedColor(i, D, potential, Gradient); }
+		{t = GiveNonBlendedColor(i, D, potential,  RepresentationFunction, Gradient); }
 		else {
-			p = ComputePotentialColor(potential);
+			p = ComputePotentialColor(potential, Gradient); // 
 			n = GiveNormalColor(i);
 			
-			t = GiveBlendedColor(p, n , Blend);
+			t = GiveBlendedColor(p, n,  Blend);
 		
 		
 		}
@@ -757,7 +788,7 @@ input :
 output : array of rgb colors 
 
 */
-void ComputePointColorAndSave(const int i, const double D[], GradientType Gradient, BlendType Blend, unsigned char  C[] ){
+void ComputePointColorAndSave(const int i, const double D[], RepresentationFunctionType RepresentationFunction, GradientType Gradient, BlendType Blend, unsigned char  C[] ){
 
 
 	
@@ -782,7 +813,7 @@ void ComputePointColorAndSave(const int i, const double D[], GradientType Gradie
 		
 		
 		} // interior
-		else { t = GiveExteriorColor(i, D, potential, Gradient, Blend);
+		else { t = GiveExteriorColor(i, D, potential,RepresentationFunction, Gradient, Blend);
 			// save color to the rgb array 
 			C[iC] 	= t;
 			C[iC+1] = t;
@@ -811,7 +842,7 @@ void ComputePointColorAndSave(const int i, const double D[], GradientType Gradie
 
 // fill array f using data from d array
 // uses global var :  ...
-int Fill_rgbData_from_dData (double D[], GradientType Gradient, BlendType Blend, unsigned char C[])
+int Fill_rgbData_from_dData (double D[], RepresentationFunctionType  RepresentationFunction, GradientType Gradient, BlendType Blend, unsigned char C[])
 {
   int i=0;		// array index 
 
@@ -821,7 +852,7 @@ int Fill_rgbData_from_dData (double D[], GradientType Gradient, BlendType Blend,
 	#pragma omp parallel for schedule(dynamic) private(i) shared( D, C, iSize)
   	for (i = 0; i < iSize; ++i){
     		//fprintf (stderr, "rgb  %d from %d \r", i, iSize);	//info 
-    		ComputePointColorAndSave(i, D, Gradient, Blend, C);	//  
+    		ComputePointColorAndSave(i, D, RepresentationFunction, Gradient, Blend, C);	//  
   }
   
   
@@ -1062,17 +1093,17 @@ int main () {
   	  
 	Fill_dDataArray(dData);
 	//
-	Fill_rgbData_from_dData (dData, step_linear, no, rgbData);
-	Save_PPM(rgbData, step_linear, "step_linear", "potential");
+	Fill_rgbData_from_dData (dData, Potential, step_sqrt, no, rgbData);
+	Save_PPM(rgbData, step_linear, "step_sqrt", "potential");
 	
-	Fill_rgbData_from_dData (dData, angle_linear, no, rgbData);
-	Save_PPM(rgbData, angle_linear, "angle_linear", "potential angle");
+	Fill_rgbData_from_dData (dData, Angle, linear, no, rgbData);
+	Save_PPM(rgbData, Angle, "angle_linear", "potential angle");
 	
-  	Fill_rgbData_from_dData (dData, normal, no, rgbData);
-	Save_PPM(rgbData, angle_linear, "normal", "Normal mapping or slope");
+  	Fill_rgbData_from_dData (dData, Normal, linear, no, rgbData);
+	Save_PPM(rgbData, Angle, "normal", "Normal mapping or slope");
 	
-	Fill_rgbData_from_dData (dData, normal, average, rgbData);
-	Save_PPM(rgbData, angle_linear, "average", "average blend = (step + Normal) / 2 ");
+	Fill_rgbData_from_dData (dData, Normal, step_sqrt, average, rgbData);
+	Save_PPM(rgbData, Angle, "average_sqrt", "average blend = (Potenital_step_sqrt + Normal) / 2 ");
   	
   	
   	end();
