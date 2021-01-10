@@ -4,12 +4,12 @@
 
 ![](./images/normal.png)  
 
-[](./images/step_linear.png)  
+![](./images/step_linear.png)  
 
 
 Result of blending above images with average mode  
 
-[](./images/average.png)  
+![](./images/average.png)  
 
 
 # see also
