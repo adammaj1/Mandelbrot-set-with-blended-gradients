@@ -1,13 +1,16 @@
 [Blend modes](https://en.wikipedia.org/wiki/Blend_modes)
 
 # example
-
+First image   
 ![](./images/normal.png)  
+
+
+Second image   
 
 ![](./images/step_linear.png)  
 
 
-Result of blending above images with average mode  
+3-rd image = Result of blending above images in average mode  
 
 ![](./images/average.png)  
 
