@@ -1,7 +1,29 @@
 How to use [blend modes](https://en.wikipedia.org/wiki/Blend_modes) to make better images ( of Mandelbrot sets and ...)  
 These images are inspired by great technique used by Adam Saka in [KFMovieMaker](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker) and his videos 
 
+# Blend modes
 
+
+```c
+unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
+
+	unsigned char t;
+	
+	switch (Blend){
+	
+		case average: {t = (c1+c2)/2.0; break;}
+		
+		
+		default: {}
+	
+	}
+	
+	return  t;
+
+
+}
+
+```
 
 
 # examples
