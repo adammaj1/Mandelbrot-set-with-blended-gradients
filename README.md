@@ -3,6 +3,20 @@ These images are inspired by great technique used by Adam Saka in [KFMovieMaker]
 
 # Blend modes
 
+Blend types ( modes) 
+
+```c
+
+typedef enum  {
+	no = 0,
+	average = 1	
+		} BlendType; 
+```
+
+
+
+
+How to compute blended color from 2 iput colors ? Here color is a single number (shades of gray)  
 
 ```c
 unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
