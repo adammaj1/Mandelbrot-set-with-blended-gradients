@@ -1,19 +1,5 @@
-[Blend modes](https://en.wikipedia.org/wiki/Blend_modes)
-
-
-c console program for creating static images (png)
-
-# dependencies
-* gcc
-* bash
-* Image Magic convert ( from ppm to png )
-
-
-# to run
-
-```
-make
-```
+How to use [blend modes](https://en.wikipedia.org/wiki/Blend_modes) to make better images ( of Mandelbrot sets and ...)  
+These images are inspired by great technique used by Adam Saka in [KFMovieMaker](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker) and his videos 
 
 
 
@@ -87,6 +73,25 @@ Second image:
 
 
 
+# program
+c console program for creating static images (png)
+
+## dependencies
+* gcc
+* bash
+* Image Magic convert ( from ppm to png )
+
+
+## to run
+
+```
+make
+```
+
+
+
+
+
 # licence
 [LICENCE](LICENCE)
 
@@ -100,3 +105,6 @@ git branch -M main
 git remote add origin git@github.com:adammaj1/Mandelbrot-set-with-blended-gradients.git
 git push -u origin main
 ```
+
+local repo:  ~/Mandelbrot-set-with-blended-gradients
+
