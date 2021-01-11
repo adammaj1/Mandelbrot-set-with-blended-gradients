@@ -16,7 +16,9 @@ typedef enum  {
 
 
 
-How to compute blended color from 2 iput colors ? Here color is a single number (shades of gray)  
+How to compute blended color from 2 input colors ? Here color is a single number (shades of gray)  
+
+Basic is [average ](https://stackoverflow.com/questions/726549/algorithm-for-additive-color-mixing-for-rgb-values)
 
 ```c
 unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
