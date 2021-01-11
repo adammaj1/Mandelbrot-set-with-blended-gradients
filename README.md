@@ -40,6 +40,10 @@ unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
 ```
 
 
+There are many blend modes 
+* [photoshop](https://stackoverflow.com/questions/5919663/how-does-photoshop-blend-two-images-together)
+
+
 # examples
 
 
