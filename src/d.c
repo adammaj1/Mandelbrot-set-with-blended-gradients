@@ -174,11 +174,13 @@ int ExampleNumberMax;
 // http://paulbourke.net/fractals/mandelbrot/
 // 4 raws of 3 columns
 // type arrayName [ x ][ y ];
-double examples[14][3] = {
+double examples[][3] = {
 	{-0.75, 		0.0, 			2.5}, // standard
 	{-1.75, 		0.0, 			0.5},
 	{-1.77 ,		0.0, 			0.07 }, // period 3 center 
-	{ -1.711065402413374, 	0.0, 			0.008}, // good
+	{-1.711065402413374, 	0.0, 			0.008}, // good, period 8
+	{-1.711161027105541, 	0.0, 			0.0009}, // good, period 8 zoom
+	
 	{0.365557777904776,	0.613240370349204, 	0.12}, 
 	{0.391080345956122, 	0.570677592363374,  	0.01},
 	{0.296294860929836,	0.017184282646391,	0.001}, // tune limits
@@ -190,7 +192,8 @@ double examples[14][3] = {
 	{-0.170337,		1.06506,  		0.000512}, // mv center
 	// period 6 wake ( 1/6) ? 
 	{0.42884,		0.231345, 		0.06}, // mv center
-	{0.42884,		0.231345, 		0.01} // mv center
+	{0.42884,		0.231345, 		0.01}, // mv center
+	{-1.711638937577389,	0.000449229252155, 	0.000001} //    period = 19
 	
 	
 	
@@ -213,7 +216,7 @@ double ratio;
 
 //  maximal number of iterations
 static unsigned long int iterMax = 1000000;	//iHeight*100;
-const int iterMax_pot = 400; // potential 
+const int iterMax_pot = 4000; // potential 
 
 const int iterMax_normal = 2000; //  N in wiki 
 
@@ -255,6 +258,7 @@ unsigned char iColorOfInterior1 = 210;
 unsigned char iColorOfInterior2 = 180;
 unsigned char iColorOfBoundary = 0;
 unsigned char iColorOfUnknown = 30;
+unsigned char iColorOfNoise = 255;
 
 // ----------memmory 1D arrays ==================
 
@@ -515,6 +519,10 @@ double ComputePotential(const complex double c){
 			potential =  s*log2(r); // log(zn)* 2^(-n)
 			potential = fabs(log(potential)); // gives level sets of potential, fabs because log(potential) is < 0
 			}
+			
+	
+	// compute value of global variable
+	if (potential >MaxImagePotential ) {MaxImagePotential  = potential;}
 	
 	return potential;
 	
@@ -525,8 +533,8 @@ unsigned char ComputePotentialColor(const double potential, const GradientType G
 
 	
 	// ranges of potential coputed earlier
-	if ( potential > potential_boundary  ){ return 0 ;}// boundary and exterior near boundary = black
-     	if ( potential > potential_noisy ) {return 255;} // 10<potential<25; exterior noisy part 
+	if ( potential > potential_boundary  ){ return iColorOfBoundary ;}// boundary and exterior near boundary = black
+     	if ( potential > potential_noisy ) {return iColorOfNoise;} // 10<potential<25; exterior noisy part 
      	// potential < 10 ; exterior not noisy, see below
      	
      	
@@ -725,7 +733,7 @@ unsigned char GiveExteriorColor(const int i, const double D[], const double pote
 	
 	switch (RepresentationFunction){
 	
-		case Potential: { g = ComputePotentialColor(potential, Gradient); if (g>MaxImagePotential ) {MaxImagePotential  = g;}; break;}  
+		case Potential: { g = ComputePotentialColor(potential, Gradient);  break;}  
      			
      		//case Angle: {g = 255*GiveAngleT(i, D); break;} // !!! needs full double array
      		
@@ -1037,10 +1045,55 @@ int local_setup(int example_number)
   	//SetCPlane( center, radius,  DisplayAspectRatio );	
   	SetCPlaneFromExamples(example_number, DisplayAspectRatio );
   	
-  	// automatic limits for potential used for zooming
+  	
+  	
   	potential_multiplier = 1+log10(radius_0/radius); //  1+example_number;
-  	potential_boundary = 25.0* potential_multiplier;
-  	potential_noisy = 10.0 * potential_multiplier;
+  	
+  	switch(example_number) {
+  	
+  	
+  		case 4:	; {
+  			/*
+  			 MaxImagePotential  = 255.0000000000000000 
+	 		plane  potential_multiplier = 2777.7777777777778283 
+	 		black area : potential > potential_boundary = 25.0* potential_multiplier = 111.0924374808178072  = 0.4356566175718345 * MaxImagePotential 
+	 		white area : potential > potential_noisy = 10.0 * potential_multiplier = 44.4369749923271229  = 0.1742626470287338 * MaxImagePotential 
+	 		*/
+  			iColorOfBoundary = iColorOfNoise; // 
+  			potential_boundary = 26.0* potential_multiplier;
+  			potential_noisy = 24.0 * potential_multiplier;
+  			break;
+  			}
+  	
+  		case 15 : {
+  		
+  			/*
+  			 iterMax_pot = 4000 
+	 		ER_POT = 100000.0000000000000000 
+	 		MaxImagePotential  = inf 
+	 		plane  potential_multiplier = 7.3979400086720375 
+	 		black area : potential > potential_boundary =  192.3464402254729748  = 0.0000000000000000 * MaxImagePotential 
+	 		white area : potential > potential_noisy  = 177.5505602081288998  = 0.0000000000000000 * MaxImagePotential 
+	 		*/
+  			iColorOfBoundary = 255;
+  			iColorOfNoise = 180 ; // 
+  			potential_boundary = 250.0; //35.0* potential_multiplier;
+  			potential_noisy = 220.0; //26.0 * potential_multiplier;
+  			break;
+  		
+  		
+  		}
+  		
+  		
+  		default : {
+  	
+  			// automatic limits for potential used for zooming
+  			
+  			potential_boundary = 25.0* potential_multiplier;
+  			potential_noisy = 10.0 * potential_multiplier;
+  			}
+  			
+  		} // switch
 	
   /* Pixel sizes */
   PixelWidth = (CxMax - CxMin) / ixMax;	//  ixMax = (iWidth-1)  step between pixels in world coordinate 
@@ -1069,7 +1122,7 @@ int PrintInfoAboutProgam(int example_number)
   	//printf ("iPeriodOfChild  = %d \n", iPeriodChild);
   
   	printf ("Image Width = %f in world coordinate\n", CxMax - CxMin);
-  	printf ("PixelWidth = %f \n", PixelWidth);
+  	printf ("PixelWidth = %f  = %.16f * Image Width\n", PixelWidth, PixelWidth/ (CxMax - CxMin));
 	  
   	//printf("for DEM\n");
   	//if ( distanceMax<0.0 || distanceMax > ER ) printf("bad distanceMax\n");
@@ -1085,7 +1138,18 @@ int PrintInfoAboutProgam(int example_number)
   	printf ("plane center c = ( %.16f ; %.16f ) \n", creal (center), cimag (center));
   	printf ("plane radius = %.16f \n", radius);
   	printf ("plane zoom = 1/radius = %.16f \n", 1.0/radius);
-  	printf ("plane  potential_multiplier = %.16f \n", radius_0/radius);
+  	
+  	
+  	printf("\n\n potential \n");
+  	printf("\t iterMax_pot = %d \n", iterMax_pot);
+  	printf("\t ER_POT = %.16f \n" , ER_POT  ); 
+  	
+  	printf ("\t MaxImagePotential  = %.16f \n", MaxImagePotential );
+  	printf ("\t plane  potential_multiplier = %.16f \n", potential_multiplier );
+  	printf("\t black area : potential > potential_boundary =  %.16f  = %.16f * MaxImagePotential \n",potential_boundary, potential_boundary / MaxImagePotential);
+  	printf("\t white area : potential > potential_noisy  = %.16f  = %.16f * MaxImagePotential \n", potential_noisy, potential_noisy / MaxImagePotential);
+  	printf("\n");
+  	
   	
   	// center and radius
   	// center and zoom
@@ -1093,7 +1157,7 @@ int PrintInfoAboutProgam(int example_number)
   	printf ("Maximal number of iterations = iterMax = %ld \n", iterMax);
   
   
-  	printf (" MaxImagePotential  = %f \n", MaxImagePotential );
+  	
   	printf("Number of pgm images = %d \n", NumberOfImages);	
   
   	printf ("ratio of image  = %f ; it should be 1.000 ...\n", ratio);
@@ -1105,6 +1169,48 @@ int PrintInfoAboutProgam(int example_number)
   
   return 0;
 }
+
+
+
+
+// uses global var
+int MakeExampleImages(int example_number){
+
+
+	 	local_setup(example_number);
+  
+		// make first input image  	  
+		Fill_dDataArray(dData1, Potential);
+		//find max potential to update potential limiots
+		Fill_rgbData_from_dData (dData1, Potential, step_sqrt, rgbData1);
+		//Save_PPM(rgbData1, "potentia_step_sqrt", "potentia_step_sqrt", radius); // bad look
+	
+	
+	
+		// make second input image  
+		Fill_dDataArray(dData2, Normal);
+		Fill_rgbData_from_dData (dData2, Normal, linear, rgbData2);
+		Save_PPM(rgbData2, "normal_linear", "normal_linear", radius);
+	
+	
+	
+		// make 3-rd image - blend image = mix of previous 2 input images
+		MakeBlendImage(rgbData1, rgbData2, average, rgbData3);
+		Save_PPM(rgbData3, "average", "average blend = (potential + normal)/2", radius);
+	
+		PrintInfoAboutProgam(example_number);
+		
+		return 0;
+
+
+
+
+
+}
+
+
+
+
 
 
 
@@ -1150,33 +1256,13 @@ int main () {
 
   	setup ();
   	
-  	int example_number = 0;
+  	int example_number = 15;
   	
   	
-  	for (  example_number = 0 ;  example_number < ExampleNumberMax; ++ example_number){
+  	//for (  example_number = 0 ;  example_number < ExampleNumberMax; ++ example_number)
+  	{
   
-  		local_setup(example_number);
-  
-		// make first input image  	  
-		Fill_dDataArray(dData1, Potential);
-		//find max potential to update potential limiots
-		Fill_rgbData_from_dData (dData1, Potential, step_sqrt, rgbData1);
-		//Save_PPM(rgbData1, "potentia_step_sqrt", "potentia_step_sqrt", radius); // bad look
-	
-	
-	
-		// make second input image  
-		Fill_dDataArray(dData2, Normal);
-		Fill_rgbData_from_dData (dData2, Normal, linear, rgbData2);
-		Save_PPM(rgbData2, "normal_linear", "normal_linear", radius);
-	
-	
-	
-		// make 3-rd image - blend image = mix of previous 2 input images
-		MakeBlendImage(rgbData1, rgbData2, average, rgbData3);
-		Save_PPM(rgbData3, "average", "average blend = (potential + normal)/2", radius);
-	
-		PrintInfoAboutProgam(example_number);
+  		MakeExampleImages(example_number);
 	
 		}
 	
