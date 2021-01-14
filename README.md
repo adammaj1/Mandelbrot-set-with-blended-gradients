@@ -4,6 +4,7 @@ These images are inspired by great technique used by Adam Saka in [KFMovieMaker]
 
 #  Results: A picture is worth a thousand words 
 
+![](./images/average_0.000001.png)
 ![](./images/average_0.000010.png)  
 ![](./images/average_0.008000.png)  
 ![](./images/average_0.070000.png)  
