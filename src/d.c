@@ -93,8 +93,7 @@ Representation Function
 // Representation function
 typedef enum  {
 	Potential = 0,
-	Angle = 1,
-	Normal = 2
+	Normal = 1
 	
 		
 		} RepresentationFunctionType; 
@@ -109,7 +108,11 @@ typedef enum  {
 	step_sqrt = 2
 		
 		} GradientType; 
-
+		
+		
+		
+		
+// https://en.wikipedia.org/wiki/Blend_modes
 typedef enum  {
 	no = 0,
 	average = 1	
@@ -143,8 +146,17 @@ static unsigned int iMax;	// = i2Dsize-1  =
 
 
 // see SetCPlane
-double radius = 2.5; 
-complex double center = -0.75;
+// standard  : ( center = -0.75 and radius = 2.5 )
+// main antenna c = -1.75 radius 0.5
+// period 3 center = c = -1.754877666246693  radsius +0.038683608637816 
+// c = -1.711065402413374     radsius  c = 0.000355134137791
+
+
+double radius ; //= 0.038683608637816; 
+double radius_0 = 2.5;
+
+double zoom ; // = 1/ radius
+complex double center ; //= -1.754877666246693;
 double  DisplayAspectRatio  = 1.0; // https://en.wikipedia.org/wiki/Aspect_ratio_(image)
 
 
@@ -157,6 +169,33 @@ double CyMax ;	//0.7;
 
 
 
+int ExampleNumberMax;
+
+// http://paulbourke.net/fractals/mandelbrot/
+// 4 raws of 3 columns
+// type arrayName [ x ][ y ];
+double examples[14][3] = {
+	{-0.75, 		0.0, 			2.5}, // standard
+	{-1.75, 		0.0, 			0.5},
+	{-1.77 ,		0.0, 			0.07 }, // period 3 center 
+	{ -1.711065402413374, 	0.0, 			0.008}, // good
+	{0.365557777904776,	0.613240370349204, 	0.12}, 
+	{0.391080345956122, 	0.570677592363374,  	0.01},
+	{0.296294860929836,	0.017184282646391,	0.001}, // tune limits
+	// period 4 mini M-set
+	{-0.170337,		1.06506,  		0.32},
+	{-0.170337,		1.06506,  		0.064},
+	{-0.170337,		1.06506,  		0.0128}, // mv center
+	{-0.170337,		1.06506,  		0.00256},
+	{-0.170337,		1.06506,  		0.000512}, // mv center
+	// period 6 wake ( 1/6) ? 
+	{0.42884,		0.231345, 		0.06}, // mv center
+	{0.42884,		0.231345, 		0.01} // mv center
+	
+	
+	
+	
+};
 
 
 
@@ -193,7 +232,14 @@ double MaxFinalRadius;
 
 
 // potential
-double MaxImagePotential;
+double MaxImagePotential = 0.0;
+double potential_multiplier;
+// limits for potential
+double potential_boundary;
+double potential_noisy;
+
+
+
 //
 double BoundaryWidth = 3.0; // % of image width  
 double distanceMax; //distanceMax = BoundaryWidth*PixelWidth;
@@ -204,7 +250,7 @@ double distanceMax; //distanceMax = BoundaryWidth*PixelWidth;
 
 
 unsigned char iColorOfExterior = 250;
-unsigned char iColorOfInterior = 200;
+unsigned char iColorOfInterior = 127;
 unsigned char iColorOfInterior1 = 210;
 unsigned char iColorOfInterior2 = 180;
 unsigned char iColorOfBoundary = 0;
@@ -216,13 +262,16 @@ unsigned char iColorOfUnknown = 30;
 static unsigned int iSize;	// = iWidth*iHeight; 
 
 // array of doubles for better percision
-double *dData;
+double *dData1;
+double *dData2;
 
 
 // rgb array = 24bit color = 3 bytes
 int iColorSize = 3 ; // RGB = 3*(unsigned char)
 unsigned int iSize_rgb; // number of elements in rgb array
-unsigned char *rgbData; // for ppm file
+unsigned char *rgbData1; // for ppm file
+unsigned char *rgbData2; // for ppm file
+unsigned char *rgbData3; // for ppm file
 //  virtual 2D array of pixels 
 // image = file on the disk
 
@@ -326,18 +375,51 @@ complex double GiveC( int ix, int iy){
 
 
 
-int SetCPlane(complex double center, double radius, double a_ratio){
+int SetCPlane(complex double Center, double Radius, double a_ratio){
+
+  // sete up global var
+  center = Center;
+  radius = Radius;
 
   CxMin = creal(center) - radius*a_ratio;	
   CxMax = creal(center) + radius*a_ratio;	//0.75;
   CyMin = cimag(center) - radius;	// inv
   CyMax = cimag(center) + radius;	//0.7;
+  
+  
   return 0;
 
 }
 
 
+// rows 
+#define LEN(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
+
+int SetCPlaneFromExamples(const int n, const double a_ratio){
+
+	int nMax = LEN(examples);
+	
+	
+	printf("n = %d \t nMax = %d \n",n,  nMax);
+	if (n> nMax)
+		{
+			SetCPlane(-0.75, 2.5, a_ratio);
+			fprintf(stderr, " error n>nMax\n");
+			return 1;
+		}
+		
+		
+	complex double c = examples[n][0] + I*examples[n][1];
+	double r = examples[n][2];
+	
+	
+	SetCPlane(c, r, a_ratio);
+	return 0;
+	
+
+
+}
 
 
 
@@ -439,16 +521,18 @@ double ComputePotential(const complex double c){
 }
 
 
-unsigned char ComputePotentialColor(const double potential, const RepresentationFunctionType RepresentationFunction){
+unsigned char ComputePotentialColor(const double potential, const GradientType Gradient){
 
-	if ( potential >25.0 ){ return 0 ;}// boundary and exterior near boundary = black
-     	if ( potential >10.0 ) {return 255;} // 10<potential<25; exterior noisy part 
-     	// potential < 10 ; exterior not noisy
+	
+	// ranges of potential coputed earlier
+	if ( potential > potential_boundary  ){ return 0 ;}// boundary and exterior near boundary = black
+     	if ( potential > potential_noisy ) {return 255;} // 10<potential<25; exterior noisy part 
+     	// potential < 10 ; exterior not noisy, see below
      	
      	
-     	double p = frac(potential) ; // step function
+     	double p ; // local copy of potential
      	
-     	switch(RepresentationFunction){
+     	switch(Gradient){
      	
      		case linear: {p = potential; break;}
      		
@@ -460,7 +544,7 @@ unsigned char ComputePotentialColor(const double potential, const Representation
      	
      	}
      	
-     	return 255*p; // linear scale  
+     	return 255*p; // change range from [0,1]  to  [0, 255] using linear scale
      							
      							
 
@@ -474,147 +558,14 @@ unsigned char ComputePotentialColor(const double potential, const Representation
 
  
  
+
+
+
+
+
 // ****************************************************************************************************
-// ****************************** dData **************************************************************
+// ****************************** Normal or Slope **************************************************************
 // ***************************************************************************************************
-
-
-// compute and save  raster point (ix,iy) data
-int ComputePoint_dData (double A[], int ix, int iy)
-{
-  int i;			/* index of 1D array */
-  double potential;
-  complex double c;
-
-
-  i = Give_i (ix, iy);		/* compute index of 1D array from indices of 2D array */
-  c = GiveC(ix,iy);
-  potential = ComputePotential(c);
-  
-  A[i] = potential;		// 
-  
-  return 0;
-}
-
-
-
-
-// fill array 
-// uses global var :  ...
-// scanning complex plane 
-int Fill_dDataArray (double A[])
-{
-  int ix, iy;		// pixel coordinate 
-
-  	//printf("compute image \n");
- 	// for all pixels of image 
-	#pragma omp parallel for schedule(dynamic) private(ix,iy) shared(A, ixMax , iyMax)
-  	for (iy = iyMin; iy <= iyMax; ++iy){ 
-    		fprintf (stderr, " %d from %d \r", iy, iyMax);	//info 
-    		for (ix = ixMin; ix <= ixMax; ++ix)
-      			ComputePoint_dData(A, ix, iy);	//  
-  }
-
-  return 0;
-}
- 
-
-/* 
- roughly speaking the code is
-
-For each pixel:
-   x = average change in iteration count of pixels to left and right.
-   y = average change in iteration count above and below.
-   colourIndex = atan2(x,y)
- 
-*/ 
-unsigned char GiveAngleT( const int i, const double D[]){
-
-	unsigned char t;
-	int ix;
-	int iy;
-	double dx;
-	double dy;
-	double angle;
-	// compute (ix and iy) from i
-	// i = ix + iy * iWidth;
-	iy = i / iWidth;
-	if (iy>iHeight || iy<0) {fprintf(stderr, " bad iy = %d\n", iy);}
-	ix = i - iy*iWidth;
-	if (ix>iWidth || ix<0) {fprintf(stderr, " bad ix = %d\n", ix);}
-	
-	
-	/*
-	compute dx and dy 
-	dx = (distance[0][1] - distance[2][1]);
-	dy = (distance[1][0] - distance[1][2]);
-	*/
-	if ( ix-1> -1 && ix+1 < iWidth && iy-1> -1 && iy+1 < iHeight){
-		dx = D[Give_i(ix-1, iy)] - D[Give_i(ix+1, iy)];
-		dy = D[Give_i(ix, iy-1)] - D[Give_i(ix, iy+1)];
-		}
-	// compute angle from dx and dy
-	//angle = atan2(dy, dx) + M_PI;
-	angle = turn(dx, dy);
-	angle *= 3.4;
-	// scale 
-	t = angle *255; 
-	return t; 
-	
-}
-
-double GiveAngleTest( const int i, const double D[]){
-
-	unsigned char t;
-	int ix;
-	int iy;
-	double dx = 0.0;
-	double dy = 0.0;
-	double angle;
-	// compute (ix and iy) from i
-	// i = ix + iy * iWidth;
-	iy = i / iWidth;
-	ix = i - iy*iWidth;
-	printf(" i = %d ix = %d iy = %d Give_i(ix,iy) = %d\n", i , ix, iy, Give_i(ix,iy)  );
-	
-	
-	
-	/*
-	compute dx and dy 
-	dx = (distance[0][1] - distance[2][1]);
-	dy = (distance[1][0] - distance[1][2]);
-	*/
-	if ( ix-1> -1 && ix+1 < iWidth && iy-1> -1 && iy+1 < iHeight){
-		dx = D[Give_i(ix-1, iy)] - D[Give_i(ix+1, iy)];
-		dy = D[Give_i(ix, iy-1)] - D[Give_i(ix, iy+1)];
-		}
-	/* 
-	For clean colouring we need to take colour from nearby pixel at stationaty points.
-	if(dx == 0 && dy == 0) {
-		dx = (distance[0][0] - distance[2][0]);
-		if(dx == 0) {
-			dx = (distance[0][2] - distance[2][2]);
-			if(dx == 0) {
-				dy = (distance[0][0] - distance[0][2]);
-				if(dy == 0) dy = (distance[2][0] - distance[2][2]);
-			}
-		}
-	}	
-	*/	
-	
-	
-		
-		
-	// compute angle from dx and dy
-	//angle = atan2(dy, dx) + M_PI;
-	angle = turn(dx, dy);
-	
-	printf("angle = %f \n", angle);
-	// scale 
-	t = angle *255; 
-	return t; 
-	
-}
 
 
 
@@ -695,18 +646,78 @@ unsigned char GiveNormalColor(const int i ) {
 
 
 
+// ****************************************************************************************************
+// ****************************** dData **************************************************************
+// ***************************************************************************************************
+
+
+// compute and save  raster point (ix,iy) data
+int ComputePoint_dData (double A[], RepresentationFunctionType  RepresentationFunction, int ix, int iy)
+{
+  int i;			/* index of 1D array */
+  //double potential;
+  complex double c;
+  double d;
+  
+
+
+  i = Give_i (ix, iy);		/* compute index of 1D array from indices of 2D array */
+  c = GiveC(ix,iy);
+  
+  switch (RepresentationFunction) {
+  	case Potential : {d = ComputePotential(c); break;}
+  	
+  	case Normal : { d = GiveReflection(c, iterMax_normal, ER_normal); break;}
+  	
+  	//case Angle : {break;}
+  	
+  	default: {}
+  	
+  	}
+  
+  A[i] = d;		// 
+  
+  return 0;
+}
 
 
 
+
+// fill array 
+// uses global var :  ...
+// scanning complex plane 
+int Fill_dDataArray (double A[], RepresentationFunctionType  RepresentationFunction)
+{
+  int ix, iy;		// pixel coordinate 
+
+  	//printf("compute image \n");
+ 	// for all pixels of image 
+	#pragma omp parallel for schedule(dynamic) private(ix,iy) shared(A, ixMax , iyMax)
+  	for (iy = iyMin; iy <= iyMax; ++iy){ 
+    		fprintf (stderr, " %d from %d \r", iy, iyMax);	//info 
+    		for (ix = ixMin; ix <= ixMax; ++ix)
+      			ComputePoint_dData(A, RepresentationFunction, ix, iy);	//  
+  }
+
+  return 0;
+}
  
 
 
 
 
  
+// ****************************************************************************************************
+// ****************************** RGB *************************************************************
+// ***************************************************************************************************
+
+
+
  
-// compute color ( shade) of gradient 
-unsigned char GiveNonBlendedColor( const int i, const double D[], const double potential, RepresentationFunctionType RepresentationFunction, GradientType Gradient){
+
+
+ 
+unsigned char GiveExteriorColor(const int i, const double D[], const double potential, RepresentationFunctionType RepresentationFunction, GradientType Gradient){
 
 
 	unsigned char g;
@@ -714,22 +725,104 @@ unsigned char GiveNonBlendedColor( const int i, const double D[], const double p
 	
 	switch (RepresentationFunction){
 	
-		case Potential: { g = ComputePotentialColor(potential, Gradient); break;}
+		case Potential: { g = ComputePotentialColor(potential, Gradient); if (g>MaxImagePotential ) {MaxImagePotential  = g;}; break;}  
      			
-     		case Angle: {g = GiveAngleT(i, D); break;}
+     		//case Angle: {g = 255*GiveAngleT(i, D); break;} // !!! needs full double array
      		
      		case Normal: {g = GiveNormalColor(i); break;}
      		
      		default: {}
      		}
-     	return g;
-
-
-
-}
+     				
+	return g;
+} 
  
 
-unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
+/*
+
+input :
+* int i
+* array D of double numbers ( distance)
+
+output : array of rgb colors 
+
+*/
+void ComputeAndSaveColor(const int i, const double D[], RepresentationFunctionType RepresentationFunction, GradientType Gradient, unsigned char  C[] ){
+
+
+	
+	int iC = i*iColorSize; // compute index of F array
+	// color channels from 0 to 255  
+	//unsigned char R;
+	//unsigned char G;
+	//unsigned char B;
+	unsigned char t; 
+	
+	double d = D[i]; 
+	// compute color
+	if (d<0.0)
+		{	// interior = solid blue
+			C[iC] 	= 0;
+			C[iC+1] = 0;
+			C[iC+2] = iColorOfInterior; // blue
+		} 
+		
+		else { 	// exterior = blended gray gradient
+			t = GiveExteriorColor(i, D, d, RepresentationFunction, Gradient);
+			// save color to the rgb array C
+			C[iC] 	= t;
+			C[iC+1] = t;
+			C[iC+2] = t;
+		} 
+			
+		
+}
+
+
+
+
+
+// fill array f using data from d array
+// uses global var :  ...
+int Fill_rgbData_from_dData (double D[], RepresentationFunctionType  RepresentationFunction, GradientType Gradient,  unsigned char C[])
+{
+  int i=0;		// array index 
+
+  	fprintf(stderr, "\nFill_rgbData_from_dData\n");
+  	//printf("compute image \n");
+ 	// for all pixels of image 
+	#pragma omp parallel for schedule(dynamic) private(i) shared( D, C, iSize)
+  	for (i = 0; i < iSize; ++i){
+    		//fprintf (stderr, "rgb  %d from %d \r", i, iSize);	//info 
+    		ComputeAndSaveColor(i, D, RepresentationFunction, Gradient, C);	//  
+  }
+  
+  
+	
+  return 0;
+}
+
+
+
+
+
+// *******************************************************************************************
+// ********************************** Blend  ****************************
+// *********************************************************************************************
+
+
+
+
+
+ 
+/* 
+Input
+* Blend,  see BlendType ( - blend mode)
+* 2 colors ( in the same range)
+
+output : color ( in the same range as input colors)
+*/
+unsigned char GiveBlendedColor(const double c1, const double c2, const BlendType Blend){
 
 	unsigned char t;
 	
@@ -748,133 +841,75 @@ unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
 }
 
 
- 
-unsigned char GiveExteriorColor(const int i, const double D[], const double potential, RepresentationFunctionType RepresentationFunction, GradientType Gradient, BlendType Blend){
 
 
-	unsigned char t;
-	double p;
-	double n;
-	
-	
-	if (!Blend )
-		{t = GiveNonBlendedColor(i, D, potential,  RepresentationFunction, Gradient); }
-		else {
-			p = ComputePotentialColor(potential, Gradient); // 
-			n = GiveNormalColor(i);
-			
-			t = GiveBlendedColor(p, n,  Blend);
-		
-		
-		}
-			
-		
-		
-			
-	return t;
+
+
+// blend Normal (slope)  and potential(GradientType)
+void ComputeAndSaveBlendColor( const unsigned char C1[], const unsigned char C2[], const BlendType Blend, const int i, unsigned char C[]){
 
 	
-
-
-} 
- 
-
-/*
-
-input :
-* int i
-* array D of double numbers ( distance)
-
-output : array of rgb colors 
-
-*/
-void ComputePointColorAndSave(const int i, const double D[], RepresentationFunctionType RepresentationFunction, GradientType Gradient, BlendType Blend, unsigned char  C[] ){
-
-
 	
-	int iC = i*iColorSize; // compute index of F array
-	// color channels from 0 to 255  
-	//unsigned char R;
-	//unsigned char G;
-	//unsigned char B;
+	
 	unsigned char t; 
-	
-	double potential = D[i]; // read 
-	
-	// compute color
-	if (potential<0.0)
-		{//t = 255;
-		// save color to the rgb array 
-		C[iC] 	= 0;
-		C[iC+1] = 0;
-		C[iC+2] = 127; // blue
+	int iC = i*iColorSize; // compute index of F array
+    	double c1 = C1[iC];
+    	double c2 = C2[iC];
+	//// compute color
+	if ( C1[iC+2] == iColorOfInterior && C1[iC]==0) // check for interior : only B  and R from RGB; see ComputeAndSaveColor
+		{	// interior = solid blue
+			C[iC] 	= 0;
+			C[iC+1] = 0;
+			C[iC+2] = iColorOfInterior; // blue
+		} 
 		
-		
-		
-		
-		} // interior
-		else { t = GiveExteriorColor(i, D, potential,RepresentationFunction, Gradient, Blend);
-			// save color to the rgb array 
+		else { 	// exterior = blended gray gradient
+			t = GiveBlendedColor( c1 , c2, Blend);
 			C[iC] 	= t;
 			C[iC+1] = t;
-			C[iC+2] = t;
-		
-		
-		
-		
-		} // exterior
+			C[iC+2] = t; 
 			
-		
-	
-	
-	
-	
-	
-	
-
+			
+		} 
+			
 }
 
 
+// 
+void MakeBlendImage(const unsigned char C1[], const unsigned char C2[], const BlendType Blend, unsigned char C[]){
 
+	 int i=0;		// array index 
 
-
-
-
-// fill array f using data from d array
-// uses global var :  ...
-int Fill_rgbData_from_dData (double D[], RepresentationFunctionType  RepresentationFunction, GradientType Gradient, BlendType Blend, unsigned char C[])
-{
-  int i=0;		// array index 
-
-  	fprintf(stderr, "\nFill_rgbData_from_dData\n");
+  	fprintf(stderr, "\nFill_rgbData_from_2_dData\n");
   	//printf("compute image \n");
  	// for all pixels of image 
-	#pragma omp parallel for schedule(dynamic) private(i) shared( D, C, iSize)
+	#pragma omp parallel for schedule(dynamic) private(i) shared(  C1, C2, C, iSize)
   	for (i = 0; i < iSize; ++i){
-    		//fprintf (stderr, "rgb  %d from %d \r", i, iSize);	//info 
-    		ComputePointColorAndSave(i, D, RepresentationFunction, Gradient, Blend, C);	//  
+    		
+    		ComputeAndSaveBlendColor( C1, C2, Blend, i, C);
   }
   
-  
+
 	
-  return 0;
+	
 }
+
 
  
  
 // *******************************************************************************************
-// ********************************** save A array to pgm file ****************************
+// ********************************** save A array to ppm file ****************************
 // *********************************************************************************************
 
 
 
-int Save_PPM( unsigned char A[], double k, char* sName, char* comment )
+int Save_PPM( const unsigned char A[], const char* sName, const char* comment, const double radius  )
 {
   
   	FILE * fp;
   
   	char name [100]; /* name of file */
-  	snprintf(name, sizeof name, "%s", sName); /*  */
+  	snprintf(name, sizeof name, "%s_%f", sName, radius); /*  */
 	char *filename =strcat(name,".ppm");
 	
 	char long_comment[200];
@@ -914,82 +949,12 @@ int Save_PPM( unsigned char A[], double k, char* sName, char* comment )
 
 
 
-void Test(){
-
-	
-	double dx =  PixelWidth/5.0;
-	double p;
-	complex double c = 0.25;
-	int i;
-	
-	for (i = 0; i < 40; ++i)
-		{
-		
-			p = ComputePotential( c);
-			int n = isnormal(p);
-			int f = isinf(p);
-			printf(" x = %.16f\t p = %f \t isnormal = %d\t isinf = %d\n", creal(c), p,n, f);
-			c += dx;
-		
-		
-		}
-
-	
-	
-
-
-
-}
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-int PrintInfoAboutProgam()
-{
-	printf("Number of pgm images = %d \n", NumberOfImages);	
-  
-  	// display info messages
-  	printf ("Numerical approximation of M set for fc(z)= z^2 + c \n");
-  	//printf ("iPeriodParent = %d \n", iPeriodParent);
-  	//printf ("iPeriodOfChild  = %d \n", iPeriodChild);
-  
-  	printf ("Image Width = %f in world coordinate\n", CxMax - CxMin);
-  	printf ("PixelWidth = %f \n", PixelWidth);
-	  
-  	printf("for DEM\n");
-  	if ( distanceMax<0.0 || distanceMax > ER ) printf("bad distanceMax\n");
-	printf("Max distance from exterior to the boundary =  distanceMax = %.16f = %f pixels\n",  distanceMax, BoundaryWidth); 
-  	printf("\n");
-  
-  
-  // image corners in world coordinate
-  // center and radius
-  // center and zoom
-  // GradientRepetition
-  printf ("Maximal number of iterations = iterMax = %ld \n", iterMax);
-  
-  
-  
-  
-  printf ("ratio of image  = %f ; it should be 1.000 ...\n", ratio);
-  //
-  printf("gcc version: %d.%d.%d\n",__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__); // https://stackoverflow.com/questions/20389193/how-do-i-check-my-gcc-c-compiler-version-for-my-eclipse
-  // OpenMP version is displayed in the console 
-  
-  
-  
-  return 0;
-}
 
 
 
@@ -1028,13 +993,7 @@ int setup ()
   iMax = iSize - 1;		// Indexes of array starts from 0 not 1 so the highest elements of an array is = array_name[size-1].
   
   
-  SetCPlane( center, radius,  DisplayAspectRatio );	
-
-  /* Pixel sizes */
-  PixelWidth = (CxMax - CxMin) / ixMax;	//  ixMax = (iWidth-1)  step between pixels in world coordinate 
-  PixelHeight = (CyMax - CyMin) / iyMax;
-  ratio = ((CxMax - CxMin) / (CyMax - CyMin)) / ((double) iWidth / (double) iHeight);	// it should be 1.000 ...
-	
+  	
   
   //ER2 = ER * ER; // for numerical optimisation in iteration
   
@@ -1042,28 +1001,114 @@ int setup ()
   
    	
   /* create dynamic 1D arrays for colors ( shades of gray ) */
-  dData = malloc (iSize * sizeof (double));
-  rgbData =  malloc (iSize_rgb * sizeof (unsigned char));
+  dData1 = malloc (iSize * sizeof (double));
+  dData2 = malloc (iSize * sizeof (double));
+  rgbData1 =  malloc (iSize_rgb * sizeof (unsigned char));
+  rgbData2 =  malloc (iSize_rgb * sizeof (unsigned char));
+  rgbData3 =  malloc (iSize_rgb * sizeof (unsigned char));
   
   	
-  if (dData == NULL || rgbData == NULL ){
+  if (dData1 == NULL || dData2 == NULL  || rgbData1 == NULL || rgbData2 == NULL || rgbData3 == NULL){
     fprintf (stderr, " Could not allocate memory");
     return 1;
   }
 
-  
+  ExampleNumberMax = LEN ( examples);
  	
   
-  BoundaryWidth = 6.0*iWidth/2000.0  ; //  measured in pixels ( when iWidth = 2000) 
-  distanceMax = BoundaryWidth*PixelWidth;
+  //BoundaryWidth = 6.0*iWidth/2000.0  ; //  measured in pixels ( when iWidth = 2000) 
+  //distanceMax = BoundaryWidth*PixelWidth;
   
   
   
   fprintf (stderr," end of setup \n");
 	
   return 0;
+  
+ } 
+  
+  
+  
+  
+int local_setup(int example_number)
+{
 
-} // ;;;;;;;;;;;;;;;;;;;;;;;;; end of the setup ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+  	//SetCPlane( center, radius,  DisplayAspectRatio );	
+  	SetCPlaneFromExamples(example_number, DisplayAspectRatio );
+  	
+  	// automatic limits for potential used for zooming
+  	potential_multiplier = 1+log10(radius_0/radius); //  1+example_number;
+  	potential_boundary = 25.0* potential_multiplier;
+  	potential_noisy = 10.0 * potential_multiplier;
+	
+  /* Pixel sizes */
+  PixelWidth = (CxMax - CxMin) / ixMax;	//  ixMax = (iWidth-1)  step between pixels in world coordinate 
+  PixelHeight = (CyMax - CyMin) / iyMax;
+  ratio = ((CxMax - CxMin) / (CyMax - CyMin)) / ((double) iWidth / (double) iHeight);	// it should be 1.000 ...
+ 
+ return 0; 
+  
+}  
+  
+
+ // ;;;;;;;;;;;;;;;;;;;;;;;;; end of the setup ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+int PrintInfoAboutProgam(int example_number)
+{
+	
+  
+  	// display info messages
+  	printf ("Numerical approximation of M set for fc(z)= z^2 + c \n");
+  	
+  	//printf ("iPeriodParent = %d \n", iPeriodParent);
+  	//printf ("iPeriodOfChild  = %d \n", iPeriodChild);
+  
+  	printf ("Image Width = %f in world coordinate\n", CxMax - CxMin);
+  	printf ("PixelWidth = %f \n", PixelWidth);
+	  
+  	//printf("for DEM\n");
+  	//if ( distanceMax<0.0 || distanceMax > ER ) printf("bad distanceMax\n");
+	//printf("Max distance from exterior to the boundary =  distanceMax = %.16f = %f pixels\n",  distanceMax, BoundaryWidth); 
+  	//printf("\n");
+  	
+  	
+  	
+  
+  
+  	// image corners in world coordinate
+  	printf ("example number = %d \n", example_number);
+  	printf ("plane center c = ( %.16f ; %.16f ) \n", creal (center), cimag (center));
+  	printf ("plane radius = %.16f \n", radius);
+  	printf ("plane zoom = 1/radius = %.16f \n", 1.0/radius);
+  	printf ("plane  potential_multiplier = %.16f \n", radius_0/radius);
+  	
+  	// center and radius
+  	// center and zoom
+  	// GradientRepetition
+  	printf ("Maximal number of iterations = iterMax = %ld \n", iterMax);
+  
+  
+  	printf (" MaxImagePotential  = %f \n", MaxImagePotential );
+  	printf("Number of pgm images = %d \n", NumberOfImages);	
+  
+  	printf ("ratio of image  = %f ; it should be 1.000 ...\n", ratio);
+  	//
+  	printf("gcc version: %d.%d.%d\n",__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__); // https://stackoverflow.com/questions/20389193/how-do-i-check-my-gcc-c-compiler-version-for-my-eclipse
+  	// OpenMP version is displayed in the console 
+  
+  
+  
+  return 0;
+}
+
+
+
+
 
 
 
@@ -1072,43 +1117,76 @@ int end(){
 
 
   fprintf (stderr," allways free memory (deallocate )  to avoid memory leaks \n"); // https://en.wikipedia.org/wiki/C_dynamic_memory_allocation
-  free(dData);
-  free(rgbData);
- 
-  PrintInfoAboutProgam();
+  free(dData1);
+  free(dData2);
+  free(rgbData1);
+  free(rgbData2);
+  free(rgbData3);
+  
+  
   return 0;
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ********************************************************************************************************************
 /* -----------------------------------------  main   -------------------------------------------------------------*/
 // ********************************************************************************************************************
 
 int main () {
-  
-  
-  
+
+
+
   	setup ();
+  	
+  	int example_number = 0;
+  	
+  	
+  	for (  example_number = 0 ;  example_number < ExampleNumberMax; ++ example_number){
   
-  	  
-	Fill_dDataArray(dData);
-	//
-	Fill_rgbData_from_dData (dData, Potential, step_sqrt, no, rgbData);
-	Save_PPM(rgbData, step_linear, "step_sqrt", "potential");
+  		local_setup(example_number);
+  
+		// make first input image  	  
+		Fill_dDataArray(dData1, Potential);
+		//find max potential to update potential limiots
+		Fill_rgbData_from_dData (dData1, Potential, step_sqrt, rgbData1);
+		//Save_PPM(rgbData1, "potentia_step_sqrt", "potentia_step_sqrt", radius); // bad look
 	
-	Fill_rgbData_from_dData (dData, Angle, linear, no, rgbData);
-	Save_PPM(rgbData, Angle, "angle_linear", "potential angle");
 	
-  	Fill_rgbData_from_dData (dData, Normal, linear, no, rgbData);
-	Save_PPM(rgbData, Angle, "normal", "Normal mapping or slope");
 	
-	Fill_rgbData_from_dData (dData, Normal, step_sqrt, average, rgbData);
-	Save_PPM(rgbData, Angle, "average_sqrt", "average blend = (Potenital_step_sqrt + Normal) / 2 ");
+		// make second input image  
+		Fill_dDataArray(dData2, Normal);
+		Fill_rgbData_from_dData (dData2, Normal, linear, rgbData2);
+		Save_PPM(rgbData2, "normal_linear", "normal_linear", radius);
+	
+	
+	
+		// make 3-rd image - blend image = mix of previous 2 input images
+		MakeBlendImage(rgbData1, rgbData2, average, rgbData3);
+		Save_PPM(rgbData3, "average", "average blend = (potential + normal)/2", radius);
+	
+		PrintInfoAboutProgam(example_number);
+	
+		}
+	
+	
+	
   	
   	
   	end();
   
- 	//Test(); 
+ 	
   	
 
   	return 0;
