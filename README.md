@@ -1,9 +1,23 @@
 How to use [blend modes](https://en.wikipedia.org/wiki/Blend_modes) to make better images ( of Mandelbrot sets and ...)  
 These images are inspired by great technique used by Adam Saka in [KFMovieMaker](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker) and his videos 
 
-# Blend modes
 
-Blend types ( modes) 
+#  Results: A picture is worth a thousand words 
+
+![](./images/average_0.008000.png)  
+![](./images/average_0.070000.png)  
+
+
+
+
+
+# Algorithm 
+
+
+
+## Blend modes
+
+Blend types (= modes) definition
 
 ```c
 
@@ -45,8 +59,6 @@ unsigned char GiveBlendedColor( double c1, double c2, BlendType Blend){
 There are many blend modes 
 * [photoshop](https://stackoverflow.com/questions/5919663/how-does-photoshop-blend-two-images-together)
 
-
-# examples
 
 
 ## potential (Linear step) plus slope
@@ -112,19 +124,22 @@ Second image:
   * [github repo](https://github.com/adamsaka/KFMovieMaker)
   * [in wikibooks](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker)
 * [color-blend](https://github.com/loilo/color-blend) by Florian Reuschel
-
+* Image composition
+  * [ImageMagic](https://imagemagick.org/script/composite.php)
+  * [Digital compositing ](https://en.wikipedia.org/wiki/Digital_compositing) and [Alpha compositing](https://en.wikipedia.org/wiki/Alpha_compositing) in wikipedia
+  
 
 
 # program
 c console program for creating static images (png)
 
-## dependencies
+dependencies
 * gcc
 * bash
 * Image Magic convert ( from ppm to png )
 
 
-## to run
+to run
 
 ```
 make
