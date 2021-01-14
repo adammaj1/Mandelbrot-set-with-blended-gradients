@@ -4,6 +4,7 @@ These images are inspired by great technique used by Adam Saka in [KFMovieMaker]
 
 #  Results: A picture is worth a thousand words 
 
+![](./images/average_0.000010.png)  
 ![](./images/average_0.008000.png)  
 ![](./images/average_0.070000.png)  
 
@@ -125,7 +126,7 @@ Second image:
   * [in wikibooks](https://en.wikibooks.org/wiki/Fractals/kallesfraktaler#KFMovieMaker)
 * [color-blend](https://github.com/loilo/color-blend) by Florian Reuschel
 * Image composition
-  * [ImageMagic](https://imagemagick.org/script/composite.php)
+  * [ImageMagic](https://imagemagick.org/script/composite.php) and [Composite compositions by Alan Gibson.](http://im.snibgo.com/compcomp.htm)
   * [Digital compositing ](https://en.wikipedia.org/wiki/Digital_compositing) and [Alpha compositing](https://en.wikipedia.org/wiki/Alpha_compositing) in wikipedia
   
 
@@ -134,8 +135,10 @@ Second image:
 c console program for creating static images (png)
 
 dependencies
-* gcc
 * bash
+* gcc
+* GNU Make
+* OpenMP
 * Image Magic convert ( from ppm to png )
 
 
