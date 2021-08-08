@@ -129,8 +129,9 @@ Second image:
 * Image composition
   * [ImageMagic](https://imagemagick.org/script/composite.php) and [Composite compositions by Alan Gibson.](http://im.snibgo.com/compcomp.htm)
   * [Digital compositing ](https://en.wikipedia.org/wiki/Digital_compositing) and [Alpha compositing](https://en.wikipedia.org/wiki/Alpha_compositing) in wikipedia
-  
-
+* shaded relief
+  * [How to calculate shaded relief for the entire world with GDAL, fast image by Anna Thieme](https://blog.datawrapper.de/shaded-relief-with-gdal-python/)  
+  * [Hill-Shading the Mandelbrot Set](https://eamonn.org/programming/2021/01/29/mandelbrot-3.html) and [almondbread by  eobrain ( c++)](https://github.com/eobrain/almondbread)
 
 # program
 c console program for creating static images (png)
